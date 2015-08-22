@@ -1,0 +1,85 @@
+---
+title: "prediction_assignment"
+output: html_document
+---
+
+Exploratory analysis of training dataset from groupware on Human activity recognition.
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases. 
+
+```{r, echo=FALSE}
+library(ggplot2)
+library(caret)
+library(randomForest)
+library(e1071)
+library(gbm)
+training_df <- read.csv('~/coursera/machine_learning/pml-training.csv',
+                        na.strings=c("NA","#DIV/0!",""))
+```
+
+Partition testing dataset into 60% testing and 40% testing
+
+```{r, echo=FALSE}
+inTrain <- createDataPartition(y=training_df$classe, p=0.6, list=FALSE)
+training <- training_df[inTrain, ]
+testing <- training_df[-inTrain, ]
+dim(training)
+dim(testing)
+```
+
+The total number of records in the training set is: `r nrow(training)`
+
+```{r, echo=FALSE}
+# Discard columns with NAs
+NAs <- apply(training, 2, function(x) { sum(is.na(x)) })
+training <- training[, which(NAs == 0)]
+# Remove useless predictors
+removeIndex <- grep("timestamp|X|user_name|new_window", names(training))
+training <- training[, -removeIndex]
+```
+
+Remove columns with no data in them `r ncol(training)`
+
+```{r, echo=FALSE}
+nzv <- nearZeroVar(training, saveMetrics= TRUE)
+training <- training[, nzv$nzv==FALSE]
+```
+
+Remove near zero value columns
+
+```{r, echo=FALSE}
+featurePlot(x=training[,2:6],
+            y=training[,'classe'],
+            plot="pairs")
+```
+
+```{r }
+trainCor <-  cor(training[,-ncol(training)])
+highCorr <- sum(abs(trainCor[upper.tri(trainCor)]) > .9)
+```
+
+There were `r highCorr` variables with high correlations
+
+```{r, echo=TRUE}
+#summary(step(lm(data = training[,c(1:10,156)], classe ~ .), trace=0))
+```
+
+```{r, echo=TRUE}
+load('/Users/chris/coursera/machine_learning/randomforest2.RData')
+
+# modelfit2 <- train(classe ~ ., data=training_df,method="glm")
+#mod1 <- train(classe ~ ., data=training, method="rf")
+#mod2 <- train(classe ~ ., data=training, method="gbm")
+#mod3 <- train(classe ~ ., data=training, method="lda")
+mod1$finalModel
+```
+
+Run against the testing set
+
+```{r, echo=FALSE}
+testing <- testing[ , which(names(testing) %in% names(training))]
+
+# Run the prediction
+pred <- predict(mod1, newdata = testing)
+pred
+```
