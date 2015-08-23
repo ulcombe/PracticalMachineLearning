@@ -5,7 +5,7 @@ output: html_document
 
 ## Project Overview
 
-The goal of this assignment is to predict the manner in which participants did the exercise. This is the "classe" variable in the training set. Any of the other variables can me used to predict with. This report will describe how you built your model, how you used cross validation, what you think the expected out of sample error is, and describe the choices you did. The final prediction model was used to predict 20 different test cases. 
+The goal of this assignment is to predict the manner in which participants did the exercise. This is the "classe" variable in the training set. Any of the other variables can me used to predict with. This report will describe how an accurate model was built, how cross validation was used, what the expected out of sample error is. The final prediction model was used to predict 20 different test cases. 
 
 ```{r, echo=FALSE, message=F,warning=F}
 library(ggplot2)
@@ -28,8 +28,6 @@ Partition testing dataset into 60% testing and 40% testing
 inTrain <- createDataPartition(y=training_df$classe, p=0.6, list=FALSE)
 training <- training_df[inTrain, ]
 xvalidation <- training_df[-inTrain, ]
-dim(training)
-dim(xvalidation)
 ```
 
 The total number of records in the training set is: `r nrow(training)`. The number of records in the cross validation set is `r nrow(xvalidation)`.
@@ -43,11 +41,7 @@ training <- training[, which(NAs == 0)]
 # Remove useless predictors
 removeIndex <- grep("timestamp|X|user_name|new_window", names(training))
 training <- training[, -removeIndex]
-```
 
-Remove columns with no data in them `r ncol(training)`
-
-```{r, echo=FALSE}
 nzv <- nearZeroVar(training, saveMetrics= TRUE)
 training <- training[, nzv$nzv==FALSE]
 ```
@@ -89,7 +83,6 @@ load('/Users/chris/coursera/machine_learning/randomforest2.RData')
 #mod2 <- train(classe ~ ., data=training, method="gbm")
 #mod3 <- train(classe ~ ., data=training, method="lda")
 mod1
-mod1$finalModel
 ```
 
 ## Cross validation
@@ -97,6 +90,7 @@ mod1$finalModel
 Run against the cross validation set
 
 ```{r, echo=FALSE}
+#mod1$finalModel
 testing_df <- testing_df[ , which(names(testing_df) %in% names(training))]
 xvalidation <- xvalidation[ , which(names(xvalidation) %in% names(training))]
 
@@ -125,4 +119,18 @@ plot(mod1varImpObj, main = "Importance of Top 10 Variables", top = 10)
 pred <- predict(mod1, newdata = testing_df)
 pred
 
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(pred)
+
 ```
+
+## Conclusion
+
+The random forest algorithm provides the best accuracy based on the out of sample error and confusion matrix results.
