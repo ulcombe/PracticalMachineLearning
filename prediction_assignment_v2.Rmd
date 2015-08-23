@@ -76,9 +76,9 @@ kable(data.frame(Corr=highCor_names))
 Using available variables as predictors there were three models tested using random forest, generalized boosted regression (gbm) and linear discriminant analysis.The most accurate model was the random forest.
 
 ```{r, echo=TRUE}
+# as takes a long time to do all models they were saved as this object
 load('/Users/chris/coursera/machine_learning/randomforest2.RData')
 
-# modelfit2 <- train(classe ~ ., data=training_df,method="glm")
 #mod1 <- train(classe ~ ., data=training, method="rf")
 #mod2 <- train(classe ~ ., data=training, method="gbm")
 #mod3 <- train(classe ~ ., data=training, method="lda")
