@@ -1,0 +1,128 @@
+---
+title: "Human Activity Recognition Prediction Assignment"
+output: html_document
+---
+
+## Project Overview
+
+The goal of this assignment is to predict the manner in which participants did the exercise. This is the "classe" variable in the training set. Any of the other variables can me used to predict with. This report will describe how you built your model, how you used cross validation, what you think the expected out of sample error is, and describe the choices you did. The final prediction model was used to predict 20 different test cases. 
+
+```{r, echo=FALSE, message=F,warning=F}
+library(ggplot2)
+library(caret)
+library(randomForest)
+library(e1071)
+library(gbm)
+library(knitr)
+training_df <- read.csv('~/coursera/machine_learning/pml-training.csv',
+                        na.strings=c("NA","#DIV/0!",""))
+testing_df <- read.csv('~/coursera/machine_learning/pml-testing.csv',
+                        na.strings=c("NA","#DIV/0!",""))
+```
+
+## Training set
+
+Partition testing dataset into 60% testing and 40% testing
+
+```{r, echo=FALSE}
+inTrain <- createDataPartition(y=training_df$classe, p=0.6, list=FALSE)
+training <- training_df[inTrain, ]
+xvalidation <- training_df[-inTrain, ]
+dim(training)
+dim(xvalidation)
+```
+
+The total number of records in the training set is: `r nrow(training)`. The number of records in the cross validation set is `r nrow(xvalidation)`.
+
+## Data Cleansing
+
+```{r, echo=FALSE}
+# Discard columns with NAs
+NAs <- apply(training, 2, function(x) { sum(is.na(x)) })
+training <- training[, which(NAs == 0)]
+# Remove useless predictors
+removeIndex <- grep("timestamp|X|user_name|new_window", names(training))
+training <- training[, -removeIndex]
+```
+
+Remove columns with no data in them `r ncol(training)`
+
+```{r, echo=FALSE}
+nzv <- nearZeroVar(training, saveMetrics= TRUE)
+training <- training[, nzv$nzv==FALSE]
+```
+
+Remove near zero value columns leaving `r ncol(training)` remaining
+
+## Data Exploration
+
+Plot correlations between 'classe' and a selection of other variables.
+
+```{r, echo=FALSE}
+featurePlot(x=training[,2:6],
+            y=training[,'classe'],
+            plot="pairs")
+```
+
+```{r,echo=FALSE }
+trainCor <-  cor(training[,-ncol(training)])
+highCorr <- sum(abs(trainCor[upper.tri(trainCor)]) > .9)
+cor_df <- unlist(apply(trainCor,1,function(x){x[which(x > .9)]}))
+highCor_names <- cor_df[-which(cor_df == 1)]
+```
+
+There were `r length(highCor_names)` variables highly correlated.
+
+```{r ,echo=FALSE}
+kable(data.frame(Corr=highCor_names))
+```
+
+## Model building
+
+Using available variables as predictors there were three models tested using random forest, generalized boosted regression (gbm) and linear discriminant analysis.The most accurate model was the random forest.
+
+```{r, echo=TRUE}
+load('/Users/chris/coursera/machine_learning/randomforest2.RData')
+
+# modelfit2 <- train(classe ~ ., data=training_df,method="glm")
+#mod1 <- train(classe ~ ., data=training, method="rf")
+#mod2 <- train(classe ~ ., data=training, method="gbm")
+#mod3 <- train(classe ~ ., data=training, method="lda")
+mod1
+mod1$finalModel
+```
+
+## Cross validation
+
+Run against the cross validation set
+
+```{r, echo=FALSE}
+testing_df <- testing_df[ , which(names(testing_df) %in% names(training))]
+xvalidation <- xvalidation[ , which(names(xvalidation) %in% names(training))]
+
+# Run the prediction
+pred <- predict(mod1, newdata = xvalidation)
+
+confusionMatrix(pred, xvalidation$classe)
+
+accuracy <- sum(pred == xvalidation$classe) / length(pred)
+```
+
+The calculated accuracy against the crossvalidation dataset for the random forest model is `r accuracy`
+
+Display the top 10 relevant variables
+
+```{r, echo=FALSE}
+mod1varImpObj <- varImp(mod1)
+# Top 40 plot
+plot(mod1varImpObj, main = "Importance of Top 10 Variables", top = 10)
+```
+
+
+## Testing of the model
+
+```{r, echo=FALSE}
+pred <- predict(mod1, newdata = testing_df)
+pred
+
+```
